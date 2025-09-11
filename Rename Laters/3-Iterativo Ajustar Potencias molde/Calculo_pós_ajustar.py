@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-# === LEITURA E LIMPEZA DO FICHEIRO CSV ===
+# === READ AND CLEAN OF CSV FILE ===
 file_path = r"C:/Users/ugims/inegi.up.pt/Teses & Estágios - Teses_Estágios - Miguel António Costa - Teses_Estágios - Miguel António Costa/3. Repositório do Miguel/Matriz seleção/prot1_zonal.csv"
 
 df = pd.read_csv(
@@ -22,37 +22,37 @@ df = pd.read_csv(
     encoding='windows-1252'
 )
 
-# Limpar nomes das colunas
+# Clean column names
 df.columns = df.columns.str.strip()
 
-# Remover a coluna "Components" (opcional, pois não é usada)
+# remove column "Components" (opcional, hardly used)
 if 'Components' in df.columns:
     df.drop(columns=['Components'], inplace=True)
 
-# Converter colunas principais para numérico
+# convert main columns to numericals
 for col in ['Node', 'Value (Celsius)', 'X (mm)', 'Y (mm)', 'Z (mm)']:
     df[col] = pd.to_numeric(df[col], errors='coerce')
 
-# Remover linhas inválidas
+# clean invalid lines
 df.dropna(inplace=True)
 
-print("✅ Dados carregados com sucesso.")
-print("Pré-visualização dos dados:\n", df.head())
+print("✅ Data uploaded successefuly.")
+print("Data pre-screen:\n", df.head())
 
-# === CÁLCULO DOS INDICADORES GLOBAIS DE UNIFORMIDADE TÉRMICA ===
+# === CALCULATION FOR GLOBAL THERMIC UNIFORMITY ===
 temperaturas = df['Value (Celsius)']
 media_global = temperaturas.mean()
 desvio_padrao = temperaturas.std()
 cv_percentual = (desvio_padrao / media_global) * 100
 delta_T = temperaturas.max() - temperaturas.min()
 
-print("\n=== Indicadores Globais de Uniformidade Térmica ===")
-print(f"Temperatura média global: {media_global:.2f} °C")
-print(f"Desvio-padrão: {desvio_padrao:.2f} °C")
-print(f"Coeficiente de variação (CV): {cv_percentual:.2f}%")
+print("\n=== Global indicators of thermal uniformity ===")
+print(f"Medium global temperature: {media_global:.2f} °C")
+print(f"Standard deviation: {desvio_padrao:.2f} °C")
+print(f"variation cofficient (CV): {cv_percentual:.2f}%")
 print(f"ΔT (máx - mín): {delta_T:.2f} °C")
 
-# Exportar resultados globais (opcional)
+# Export global results (opcional)
 pd.DataFrame([{
     'Temperatura média global (°C)': media_global,
     'Desvio-padrão (°C)': desvio_padrao,
@@ -60,44 +60,44 @@ pd.DataFrame([{
     'ΔT (máx - mín) (°C)': delta_T
 }]).to_csv("resultado_uniformidade_molde1.csv", sep=';', index=False)
 
-# === DEFINIÇÃO DAS ZONAS AO LONGO DO EIXO X ===
-# Dividir automaticamente o intervalo [xmin, xmax] em 3 zonas iguais
+# === DEFINITION OF ZONES ALONG AXIS X ===
+# Automatic division of interval [xmin, xmax] in 3 equal zones
 xmin = df['X (mm)'].min()
 xmax = df['X (mm)'].max()
 L = xmax - xmin
 
 # Bins: [xmin, xmin+L/3), [xmin+L/3, xmin+2L/3), [xmin+2L/3, xmax]
-edges = [xmin, xmin + L/3, xmin + 2*L/3, xmax + 1e-9]  # +epsilon para incluir o último ponto
+edges = [xmin, xmin + L/3, xmin + 2*L/3, xmax + 1e-9]  # +epsilon to include last point
 
 df['Zona'] = pd.cut(
     df['X (mm)'],
     bins=edges,
     labels=['Z1', 'Z2', 'Z3'],
     include_lowest=True,
-    right=False  # esquerda-inclusivo, direita-exclusivo (evita buracos na fronteira)
+    right=False  # left-inclusive, right exclusive (avoid boundary holes)
 )
 
-# Validar se todos os pontos foram classificados
+# All point classication to be validated
 if df['Zona'].isna().any():
     n_na = df['Zona'].isna().sum()
-    print(f"⚠️ Aviso: {n_na} pontos não foram atribuídos a zonas. Verifica os limites de X.")
+    print(f"⚠️ WARNING: {n_na} dots not set. Verify X limits.")
 
-# === MÉTRICAS POR ZONA ===
+# === ZONE METRICS ===
 agg = df.groupby('Zona')['Value (Celsius)'].agg(['count','mean','std','min','max']).rename(
     columns={'count':'N','mean':'T_mean','std':'T_std','min':'T_min','max':'T_max'}
 )
 agg['CV_%'] = (agg['T_std'] / agg['T_mean']) * 100
 agg['DeltaT'] = agg['T_max'] - agg['T_min']
 
-print("\n=== Métricas por Zona ===")
+print("\n=== Zone Metrics ===")
 print(agg)
 
-# Exportar métricas por zona (opcional)
+# Export zone metrics (opcional)
 agg.to_csv("metricas_por_zona.csv", sep=';')
 
-# === ÍNDICE DE ISOLAMENTO (caso típico: aquecer apenas Z2) ===
-# Média ponderada de Z1 e Z3 (ponderada por N de pontos), dividida pela média de Z2
-# Se não houver pontos em alguma zona, evita divisão por zero.
+# === ISOLATION INDICE (tipical case: heat only Z2) ===
+# Pondered average of Z1 and Z3 (ponderada por N de pontos), devided for average of Z2
+# In case of missing zones, avoid division by 0.
 def safe_get(zone, col):
     return agg.loc[zone, col] if zone in agg.index else np.nan
 
@@ -108,16 +108,16 @@ if pd.notna(N1) and pd.notna(N2) and pd.notna(N3) and N2 > 0:
     # Média ponderada lateral (Z1+Z3)
     T13 = (T1*N1 + T3*N3) / (N1 + N3) if (N1 + N3) > 0 else np.nan
     isolamento_percent = (T13 / T2) * 100 if pd.notna(T13) and pd.notna(T2) and T2 != 0 else np.nan
-    print("\n=== Índice de Isolamento (apto quando aqueces só Z2) ===")
-    print(f"Média Z1+Z3 (ponderada): {T13:.2f} °C")
-    print(f"Média Z2: {T2:.2f} °C")
-    print(f"Isolamento (Z1+Z3 / Z2 × 100): {isolamento_percent:.2f} %")
+    print("\n=== Isolation Indice (apt only when Z2 is heated) ===")
+    print(f"Average Z1+Z3 (ponderada): {T13:.2f} °C")
+    print(f"Average Z2: {T2:.2f} °C")
+    print(f"Isolation (Z1+Z3 / Z2 × 100): {isolamento_percent:.2f} %")
 else:
-    print("\n⚠️ Não foi possível calcular o índice de isolamento (verifica as zonas e os dados).")
+    print("\n⚠️ WARNING: Isolation Indice calculation was not possible, please verify your zones and data.")
 
-# === GRÁFICO 3D ===
+# === GRAPHIC 3D ===
 x = df['X (mm)']
-y = df['Z (mm)']  # largura no teu CSV
+y = df['Z (mm)']  # width of CSV
 temperatura = df['Value (Celsius)']
 
 fig = plt.figure(figsize=(10, 8))
@@ -129,9 +129,9 @@ ax.set_ylabel('Z (mm) - Largura')
 ax.set_zlabel('Temperatura (°C)')
 ax.set_title('Distribuição de Temperatura na Superfície Superior do Molde')
 
-# Marcar as fronteiras das zonas no eixo X (opcional, visual)
+# Mark boundary zones of axis X (opcional, visual)
 for xb in edges[1:-1]:
-    ax.plot([xb, xb], [y.min(), y.max()], zs=temperatura.mean(), zdir='y', alpha=0.0)  # guia "invisível" para manter simples
+    ax.plot([xb, xb], [y.min(), y.max()], zs=temperatura.mean(), zdir='y', alpha=0.0)  # "invisible" guide to keep it all simple
 
 cbar = plt.colorbar(scatter, ax=ax, pad=0.1)
 cbar.set_label('Temperatura (°C)')
