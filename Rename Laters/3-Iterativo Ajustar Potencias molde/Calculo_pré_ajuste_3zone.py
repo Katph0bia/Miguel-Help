@@ -7,13 +7,13 @@ Created on Sat Aug 30 19:28:30 2025
 
 # -*- coding: utf-8 -*-
 """
-Molde 900 x 420 mm • Controlo em 3 Zonas (5+5+5 resistências)
-- Reescala coordenadas do CSV para 900x420
-- Mapeia pontos às 15 zonas longitudinais reais (via centros)
-- Pede potência para Zona 1, Zona 2, Zona 3 (cada uma aplica-se às 5 resistências da zona)
-- Faz ajuste automático por zona (K * erro relativo) com limites [P_MIN, P_MAX]
-- Exporta CSVs: plano inicial e plano ajustado
-- Gera gráficos: 3D, 2D, barras 3 zonas e overlay 2D das faixas
+Mould 900 x 420 mm • Control in 3 zones (5+5+5 resistances)
+- Reescaling coordenates of CSV to 900x420
+- Map dots to all 15 longitudinal real zones (via centre)
+- Request potency to zone 1, zone 2, zone 3 (to each appl 5 resistances)
+- Automatic adjusting per zone (K * relative error) with limits [P_MIN, P_MAX]
+- Export CSVs: inicial plan and ajusted plan
+- Generate graphics: 3D, 2D, 3 zone bars and 2D overlay of bands
 """
 
 import pandas as pd
@@ -24,31 +24,31 @@ from scipy.interpolate import griddata
 import matplotlib.patches as patches
 
 # ==========================
-# CONFIGURAÇÃO (valores fixos) – sem input()
+# CONFIGURATION (fixed values) – no input()
 # ==========================
 file_path = r"C:/Users/ugims/inegi.up.pt/Teses & Estágios - Teses_Estágios - Miguel António Costa - Teses_Estágios - Miguel António Costa/3. Repositório do Miguel/5-Scrips Python/3-Iterativo Ajustar Potencias molde/Prototipo_uniforme_9.csv"
 
-MOLD_X = 900.0  # mm (comprimento)
-MOLD_Z = 420.0  # mm (largura)
+MOLD_X = 900.0  # mm (height)
+MOLD_Z = 420.0  # mm (width)
 
-# Controlador proporcional (ganho) e limites físicos das potências
+# proportional controler (gain) and physical limit of potencies
 K = 1.5
 P_MIN = 10
 P_MAX = 150
 
-# --- Borda fixa (mm) — editar aqui ---
+# --- fixed border (mm) — Edit here ---
 BX_esq = 100
 BX_dir = 100
 BZ_inf = 80
 BZ_sup = 80
 
-# --- Temperaturas-alvo fixas (°C) por macrozona — editar aqui ---
+# --- fixed target temperature (°C) by macrozone — Edit here ---
 # Z1: resistências 1–5 | Z2: 6–10 | Z3: 11–15
 T_SET_1 = 140
 T_SET_2 = 140
 T_SET_3 = 140
 
-# Centros reais (mm) das 15 resistências
+# real centers (mm) dofas 15 resistences
 CENTROS = [
     29.60, 88.80, 148.00, 207.20, 266.40,
     331.60, 390.80, 450.00, 509.20, 568.40,
@@ -59,7 +59,7 @@ assert len(CENTROS) == 15
 assert 0 <= min(CENTROS) and max(CENTROS) <= MOLD_X
 
 # ==========================
-# LEITURA + LIMPEZA + REESCALA
+# READ + CLEAN + RESCALE
 # ==========================
 df = pd.read_csv(
     file_path,
@@ -72,14 +72,14 @@ for col in df.columns:
     df[col] = pd.to_numeric(df[col], errors='coerce')
 df.dropna(inplace=True)
 
-# Reescala para 900x420
+# Rescale to 900x420
 xr, zr = df['X (mm)'], df['Z (mm)']
 x_min_raw, x_max_raw = xr.min(), xr.max()
 z_min_raw, z_max_raw = zr.min(), zr.max()
 if x_max_raw == x_min_raw:
-    raise ValueError("Intervalo de X no ficheiro é nulo; não é possível reescalar.")
+    raise ValueError("X interval is Null; Rescaling impossible.")
 if z_max_raw == z_min_raw:
-    raise ValueError("Intervalo de Z no ficheiro é nulo; não é possível reescalar.")
+    raise ValueError("Z interval is Null; Rescaling impossible.")
 
 df['X (mm)'] = (xr - x_min_raw) / (x_max_raw - x_min_raw) * MOLD_X
 df['Z (mm)'] = (zr - z_min_raw) / (z_max_raw - z_min_raw) * MOLD_Z
@@ -87,13 +87,13 @@ df['Z (mm)'] = (zr - z_min_raw) / (z_max_raw - z_min_raw) * MOLD_Z
 x = df['X (mm)']; z = df['Z (mm)']; T = df['Value (Celsius)']
 
 # ==========================
-# 15 ZONAS REAIS (limites por pontos médios entre CENTROS)
+# 15 REAL ZONES (Limited by MEDIUM DOTS between CENTER)
 # ==========================
 limites = [0.0]
 for i in range(1, len(CENTROS)):
     limites.append(0.5 * (CENTROS[i-1] + CENTROS[i]))
 limites.append(MOLD_X)
-x_edges = np.array(limites, dtype=float)  # 16 bordas → 15 zonas
+x_edges = np.array(limites, dtype=float)  # 16 borders → 15 zones
 
 def zona15_por_x(xp, edges):
     for i in range(len(edges) - 1):
@@ -105,7 +105,7 @@ def zona15_por_x(xp, edges):
 
 df['Zona_15'] = df['X (mm)'].apply(lambda v: zona15_por_x(v, x_edges))
 
-# 3 macro-zonas (5+5+5)
+# 3 macro-zones (5+5+5)
 def macro_zona(z15):
     if 1 <= z15 <= 5:   return 1
     if 6 <= z15 <= 10:  return 2
@@ -115,13 +115,13 @@ def macro_zona(z15):
 df['Zona_Macro'] = df['Zona_15'].apply(macro_zona)
 
 # ==========================
-# BORDO FIXO (ignorar periferia sem peça)
+# FIXED BORDER (ignore edge without any piece)
 # ==========================
-# validações simples das bordas
+# Validate simple borders
 if BX_esq + BX_dir >= MOLD_X - 1e-6:
-    raise ValueError("Soma dos bordos em X excede o comprimento do molde.")
+    raise ValueError("Sum of X borders exceeds mould's height.")
 if BZ_inf + BZ_sup >= MOLD_Z - 1e-6:
-    raise ValueError("Soma dos bordos em Z excede a largura do molde.")
+    raise ValueError("Sum of Z borders exceeds mould's width.")
 
 x0, x1 = BX_esq, MOLD_X - BX_dir
 z0, z1 = BZ_inf, MOLD_Z - BZ_sup
@@ -130,15 +130,15 @@ mask_util = (df['X (mm)'] >= x0) & (df['X (mm)'] <= x1) & \
             (df['Z (mm)'] >= z0) & (df['Z (mm)'] <= z1)
 df_util = df.loc[mask_util].copy()
 
-# Médias por zona macro COM bordo aplicado
+# Average for macro zones WITH border applied
 medias_macro = df_util.groupby('Zona_Macro')['Value (Celsius)'] \
                       .mean().reindex([1, 2, 3])
-print("\nTemperatura média por Zona Macro (com bordo aplicado):")
+print("\Medium temperature for macro zone (with border applied):")
 for zmac in [1, 2, 3]:
     val = float(medias_macro.loc[zmac]) if pd.notna(medias_macro.loc[zmac]) else np.nan
     print(f"  Zona {zmac}: {val:.2f} °C")
 
-# Função para desenhar a área útil
+# Function to draw useful area
 def desenhar_area_util(ax):
     rect = patches.Rectangle(
         (x0, z0), x1 - x0, z1 - z0,
@@ -148,7 +148,7 @@ def desenhar_area_util(ax):
     ax.add_patch(rect)
 
 # ==========================
-# INTERPOLAÇÃO PARA MAPAS
+# MAPS INTERPOLATION
 # ==========================
 xi = np.linspace(x.min(), x.max(), 220)
 zi = np.linspace(z.min(), z.max(), 220)
@@ -156,7 +156,7 @@ XI, ZI = np.meshgrid(xi, zi)
 TI = griddata((x, z), T, (XI, ZI), method='cubic')
 
 # ==========================
-# GRÁFICOS BASE (3D e 2D), com área útil
+# GRAPHICS BASE (3D e 2D), with usefull area
 # ==========================
 fig = plt.figure(figsize=(10, 8))
 ax3d = fig.add_subplot(111, projection='3d')
@@ -178,9 +178,9 @@ plt.legend(loc='lower right', frameon=False)
 plt.tight_layout(); plt.show()
 
 # ==========================
-# SUBDIVISÃO 15 × 4 (diagnóstico) — mostra molde completo + área útil
+# SUBDIVISION 15 × 4 (diagnosis) — shows complete mould + usefull area
 # ==========================
-z_edges = np.linspace(0.0, MOLD_Z, 5)   # 5 bordas → 4 linhas
+z_edges = np.linspace(0.0, MOLD_Z, 5)   # 5 borders → 4 lines
 ncols = len(x_edges) - 1  # 15
 nrows = len(z_edges) - 1  # 4
 
@@ -233,29 +233,29 @@ ax.set_title('Subdivisão 15×4: Temperatura Média e ΔT por Subzona (60 zonas)
 sm = plt.cm.ScalarMappable(cmap='plasma',
                            norm=plt.Normalize(vmin=estat_15x4['mean'].min(), vmax=estat_15x4['mean'].max()))
 plt.colorbar(sm, ax=ax).set_label('Temperatura Média (°C)')
-# área útil
+# usefull area
 ax.add_patch(patches.Rectangle((x0, z0), x1-x0, z1-z0, fill=False, linestyle='--', linewidth=2, edgecolor='white',
                                label='Área útil (sem bordo)'))
 plt.legend(loc='lower right', frameon=False)
 plt.grid(False); plt.tight_layout(); plt.show()
 
 # ==========================
-# INPUTS: POTÊNCIA INICIAL por macrozona (mantido)
+# INPUT: INICIAL POTENCY for macrozone (kept)
 # ==========================
 def pedir_float(txt):
     while True:
         try:
             return float(input(txt))
         except ValueError:
-            print("Valor inválido. Insere um número.")
+            print("Invalid value. Insert new number.")
 
-print("\nInsere a potência (W) para cada zona macro (aplicada às 5 resistências dessa zona):")
-PZ1 = pedir_float("  Zona 1: ")
-PZ2 = pedir_float("  Zona 2: ")
-PZ3 = pedir_float("  Zona 3: ")
+print("\nInsert potency (W) for each macro zone (applied to 5 resistences from said zone):")
+PZ1 = pedir_float("  Zone 1: ")
+PZ2 = pedir_float("  Zone 2: ")
+PZ3 = pedir_float("  Zone 3: ")
 
 # ==========================
-# AJUSTE (proporcional multiplicativo) COM médias da área útil
+# ADJUST (proportions are multoplicative) WITH usefull area averages
 # ==========================
 T_targets = {1: T_SET_1, 2: T_SET_2, 3: T_SET_3}
 ajuste = []
@@ -277,7 +277,7 @@ for zmac, P_old in zip([1, 2, 3], [PZ1, PZ2, PZ3]):
     })
 
 ajuste_df = pd.DataFrame(ajuste)
-print("\n=== Ajuste por Zona Macro (com bordo aplicado) ===")
+print("\n=== Adjust by macro zone (with applied border) ===")
 print(ajuste_df.to_string(index=False, formatters={
     'T_média (°C)': lambda v: f"{v:.2f}",
     'T_alvo (°C)':  lambda v: f"{v:.2f}",
@@ -287,12 +287,12 @@ print(ajuste_df.to_string(index=False, formatters={
     'Nova Potência (W)':    lambda v: f"{v:.1f}"
 }))
 
-# Vetor ajustado por resistência (repete a potência nova da macrozona)
+# adjusted vectors by resistence (repeat the new potency of macro zone)
 PZ1_new, PZ2_new, PZ3_new = ajuste_df.set_index('Zona').loc[[1, 2, 3], 'Nova Potência (W)'].tolist()
 pot_ajustada_15 = [PZ1_new]*5 + [PZ2_new]*5 + [PZ3_new]*5
 
 # ==========================
-# GRÁFICO: POTÊNCIA POR ZONA (ANTES vs DEPOIS)
+# GRAPHIC: POTENCY BY ZONE (BEFORE and AFTER)
 # ==========================
 fig, ax1 = plt.subplots(figsize=(9.5, 5.2))
 zonas = np.array([1, 2, 3])
@@ -316,23 +316,23 @@ ax2.tick_params(axis='y')
 plt.tight_layout(); plt.show()
 
 # ==========================
-# OVERLAY 2D: limites das 15 zonas + faixas 3 macrozonas + área útil
+# OVERLAY 2D: limits of 15 zones + bands of 3 macrozones + usefull area
 # ==========================
 plt.figure(figsize=(10, 8))
 cf = plt.contourf(XI, ZI, TI, levels=100, cmap='plasma')
 for e in x_edges:
     plt.axvline(e, linewidth=0.9, alpha=0.55, linestyle='--')
 
-# Macro-zonas: [0..5], [5..10], [10..15] em x_edges
+# Macro-zones: [0..5], [5..10], [10..15] in x_edges
 plt.axvspan(x_edges[0],  x_edges[5],  alpha=0.10, label=f"Z1: {PZ1_new:.0f} W")
 plt.axvspan(x_edges[5],  x_edges[10], alpha=0.10, label=f"Z2: {PZ2_new:.0f} W")
 plt.axvspan(x_edges[10], x_edges[15], alpha=0.10, label=f"Z3: {PZ3_new:.0f} W")
 
-# Área útil
+# Useful Area
 ax = plt.gca()
 desenhar_area_util(ax)
 
-# Etiquetas no topo
+# Tags no topo
 plt.text(0.5*(x_edges[0]+x_edges[5]),   0.96*MOLD_Z, f"Z1: {PZ1_new:.0f} W",  ha='center', va='top', fontsize=10, weight='bold')
 plt.text(0.5*(x_edges[5]+x_edges[10]),  0.96*MOLD_Z, f"Z2: {PZ2_new:.0f} W", ha='center', va='top', fontsize=10, weight='bold')
 plt.text(0.5*(x_edges[10]+x_edges[15]), 0.96*MOLD_Z, f"Z3: {PZ3_new:.0f} W", ha='center', va='top', fontsize=10, weight='bold')
@@ -344,12 +344,12 @@ plt.legend(loc='lower center', ncol=3, frameon=False)
 plt.tight_layout(); plt.show()
 
 # ==========================
-# GRÁFICO POR RESISTÊNCIA: 15 BARRAS (com posição real em mm)
+# GRAPHICS BY RESISTANCE: 15 BANDS (with real position on mm)
 # ==========================
 fig, ax = plt.subplots(figsize=(12, 5.8))
 idx = np.arange(1, 16, dtype=int)
 
-# fundos por macrozona
+# background by macrozone
 ax.axvspan(0.5, 5.5,  alpha=0.08)
 ax.axvspan(5.5, 10.5, alpha=0.08)
 ax.axvspan(10.5, 15.5, alpha=0.08)
@@ -362,7 +362,7 @@ ax.set_title('Potência por Resistência (após ajuste) — com posição real')
 ax.set_xticks(idx)
 ax.set_xticklabels([f"R{i}\n{CENTROS[i-1]:.1f} mm" for i in idx], rotation=0)
 
-# linhas finas entre barras (equivalentes às meias-distâncias reais)
+# thin lines between bands (equivalent as real mid-distances)
 for k in range(0, 16):  # 0.5..15.5
     ax.axvline(k + 0.5, linestyle='--', alpha=0.35, linewidth=0.7)
 
