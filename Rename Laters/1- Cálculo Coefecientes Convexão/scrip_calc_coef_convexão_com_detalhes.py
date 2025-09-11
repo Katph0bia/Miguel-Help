@@ -93,7 +93,7 @@ def calcular_todos_hq():
         num = int(input("How many details? "))
         for i in range(num):
             print(f"\n[Details {i+1}]")
-            tipo = input("Orientation (vertical / horizontal_upper / horizontal_lower): ").strip().lower()
+            tipo = input("Orientation (vertical / horizontal_sup / horizontal_inf: ").strip().lower()
             if tipo == "vertical":
                 L = float(input("Detail's height (mm): ")) / 1000
             else:
