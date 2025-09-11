@@ -9,7 +9,7 @@ def calcular_todos_hq():
     import numpy as np
     from scipy.interpolate import interp1d
 
-    # Dados da tabela
+    # Table Data
     T_values = [100, 150, 200, 250, 300, 350, 400, 450, 500, 550,
                 600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100]
     nu_values = [2.00, 4.426, 7.590, 11.44, 15.89, 20.92, 26.41, 32.39, 38.79, 45.57,
@@ -21,19 +21,19 @@ def calcular_todos_hq():
     k_values = [9.34, 13.8, 18.1, 22.3, 26.3, 30.0, 33.8, 37.3, 40.7, 43.9,
                 46.9, 49.7, 52.4, 54.9, 57.3, 59.6, 62.0, 64.3, 66.5, 69.0, 71.5]
 
-    # Interpoladores
+    # Interperlators
     nu_interp = interp1d(T_values, nu_values, kind='linear')
     alpha_interp = interp1d(T_values, alpha_values, kind='linear')
     pr_interp = interp1d(T_values, Pr_values, kind='linear')
     k_interp = interp1d(T_values, k_values, kind='linear')
 
-    # Entradas geométricas e térmicas (em mm e °C)
-    print("Insira as dimensões em milímetros:")
-    altura = float(input("Altura da placa (mm): ")) / 1000
-    largura = float(input("Largura da placa (mm): ")) / 1000
-    comprimento = float(input("Comprimento da placa (mm): ")) / 1000
-    Ts_C = float(input("Temperatura da superfície (°C): "))
-    Tamb_C = float(input("Temperatura ambiente (°C): "))
+    # Geometric and Thermic data (in -> mm, ºC)
+    print("Insert new dimensions  --In Milimeters--:")
+    altura = float(input("Height of plate (mm): ")) / 1000
+    largura = float(input("Width of plate (mm): ")) / 1000
+    comprimento = float(input("depth of plate (mm): ")) / 1000
+    Ts_C = float(input("Surface temperature (°C): "))
+    Tamb_C = float(input("Ambient temperature (°C): "))
 
     Ts = Ts_C + 273.15
     Tamb = Tamb_C + 273.15
@@ -42,13 +42,13 @@ def calcular_todos_hq():
     g = 9.81
     beta = 1 / Tfilm
 
-    # Interpolação das propriedades
+    # Properties Interpolation
     nu = nu_interp(Tfilm) * 1e-6
     alpha = alpha_interp(Tfilm) * 1e-6
     Pr = pr_interp(Tfilm)
     k = k_interp(Tfilm) * 1e-3
 
-    # Comprimento característico
+    # Lengths and Areas
     A = largura * comprimento
     P = 2 * (largura + comprimento)
     L_horizontal = A / P
@@ -67,8 +67,8 @@ def calcular_todos_hq():
         hq = NuL * k / L
         return RaL, NuL, hq
 
-    # Resultados principais
-    print("\n--- Resultados Gerais ---")
+    # Main results
+    print("\n--- General Results ---")
     print(f"T_film: {Tfilm:.2f} K")
     print(f"ν = {nu:.2e} m²/s | α = {alpha:.2e} m²/s | Pr = {Pr:.4f} | k = {k:.4f} W/m·K")
 
@@ -78,27 +78,27 @@ def calcular_todos_hq():
     print(f"  Ra_L = {Ra_v:.2e} | Nu_L = {Nu_v:.2f} | h_q = {hq_v:.2f} W/m²·K")
 
     Ra_hs, Nu_hs, hq_hs = calcular_ral_nul_hq(L_horizontal, "horizontal_sup")
-    print("\n[2] Horizontal - superfície superior quente (ou inferior fria):")
+    print("\n[2] Horizontal - upper hot surface (or lower cold):")
     print(f"  L = {L_horizontal:.4f} m")
     print(f"  Ra_L = {Ra_hs:.2e} | Nu_L = {Nu_hs:.2f} | h_q = {hq_hs:.2f} W/m²·K")
 
     Ra_hi, Nu_hi, hq_hi = calcular_ral_nul_hq(L_horizontal, "horizontal_inf")
-    print("\n[3] Horizontal - superfície inferior quente (ou superior fria):")
+    print("\n[3] Horizontal - lower hot surface (ou upper cold):")
     print(f"  L = {L_horizontal:.4f} m")
     print(f"  Ra_L = {Ra_hi:.2e} | Nu_L = {Nu_hi:.2f} | h_q = {hq_hi:.2f} W/m²·K")
 
-  # Calcular para detalhes adicionais
-    resposta = input("\nDeseja calcular para detalhes adicionais do molde? (s/n): ").strip().lower()
-    if resposta == 's':
-        num = int(input("Quantos detalhes deseja calcular? "))
+  # Calculation for additional details
+    resposta = input("\nAny additional mould details (y/n): ").strip().lower()
+    if resposta == 'y':
+        num = int(input("How many details? "))
         for i in range(num):
-            print(f"\n[Detalhe {i+1}]")
-            tipo = input("Orientação (vertical / horizontal_sup / horizontal_inf): ").strip().lower()
+            print(f"\n[Details {i+1}]")
+            tipo = input("Orientation (vertical / horizontal_upper / horizontal_lower): ").strip().lower()
             if tipo == "vertical":
-                L = float(input("Altura do detalhe (mm): ")) / 1000
+                L = float(input("Detail's height (mm): ")) / 1000
             else:
-                largura_d = float(input("Largura do detalhe (mm): ")) / 1000
-                comprimento_d = float(input("Comprimento do detalhe (mm): ")) / 1000
+                largura_d = float(input("Detail's width (mm): ")) / 1000
+                comprimento_d = float(input("Detail's depth (mm): ")) / 1000
                 A_d = largura_d * comprimento_d
                 P_d = 2 * (largura_d + comprimento_d)
                 L = A_d / P_d
@@ -107,15 +107,15 @@ def calcular_todos_hq():
             print(f"  L = {L:.4f} m")
             print(f"  Ra_L = {Ra:.2e} | Nu_L = {Nu:.2f} | h_q = {hq:.2f} W/m²·K")
 
-    # NOVA FUNCIONALIDADE: canal horizontal com aquecimento inferior (fórmula 9.47)
-    resposta_canal = input("\nDeseja calcular o coeficiente de convecção para um canal horizontal fechado com aquecimento inferior? (s/n): ").strip().lower()
-    if resposta_canal == 's':
-        print("\n--- Cálculo por convecção natural (canal horizontal — fórmula 9.47 de Azevedo & Sparrow) ---")
+    # NEW FUNCTIONALITY: lower channel with lower heating (formula 9.47)
+    resposta_canal = input("\nCalculate convention coefficient for a lower closed horizontal channel? (y/n): ").strip().lower()
+    if resposta_canal == 'y':
+        print("\n--- Natural convention calculation (horizontal channel — formula 9.47 by Azevedo & Sparrow) ---")
         try:
-            S = float(input("Espaçamento entre placas S (mm): ")) / 1000
-            L_canal = float(input("Comprimento do canal L (mm): ")) / 1000
+            S = float(input("Spacing between plates S (mm): ")) / 1000
+            L_canal = float(input("Channel depth L (mm): ")) / 1000
 
-            # Número de Rayleigh baseado em S
+            # Number of Rayleigh based in S
             Ra_S = (g * beta * delta_T * S**3) / (nu * alpha)
             ratio_SL = S / L_canal
             Nu_S = 0.645 * (Ra_S * ratio_SL)**0.25
@@ -129,5 +129,5 @@ def calcular_todos_hq():
         except Exception as e:
             print(f"Erro no cálculo do canal horizontal: {e}")
 
-# Para correr: 
+# Main Function: 
 calcular_todos_hq()
