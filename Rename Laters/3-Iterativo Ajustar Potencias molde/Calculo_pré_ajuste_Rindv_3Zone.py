@@ -190,15 +190,15 @@ draw_useful_area(ax)
 plt.grid(False); plt.tight_layout(); plt.show()
 
 # ==========================
-# 15 × 4 SUBZONES (valores em TODO o molde) — overlay mostra a área útil
+# 15 × 4 SUBZONES (values in moul'd's TODO) — overlay mostra a área útil
 # ==========================
-# X edges por pontos médios entre os centros reais
+# X edges per average dots between real centers
 x_edges = [0.0]
 for i in range(1, len(CENTRES)):
     x_edges.append(0.5 * (CENTRES[i-1] + CENTRES[i]))
 x_edges.append(MOLD_X)
-x_edges = np.array(x_edges, dtype=float)  # 16 bordas → 15 colunas
-z_edges = np.linspace(0.0, MOLD_Z, 5)     # 5 bordas → 4 linhas
+x_edges = np.array(x_edges, dtype=float)  # 16 borders → 15 columns
+z_edges = np.linspace(0.0, MOLD_Z, 5)     # 5 borders → 4 lines
 
 ncols = len(x_edges) - 1  # 15
 nrows = len(z_edges) - 1  # 4
@@ -217,13 +217,13 @@ def zone_15x4(xp, zp, xed, zed):
     if i is None or j is None: return np.nan
     return j * (len(xed) - 1) + i + 1
 
-# >>> Estatísticas 15×4 com TODOS os pontos (df), para ter valores fora do bordo
+# >>> Statistics 15×4 with ALL the dots (df), for all values outside the boundaries
 df['Zone_15x4_ALL'] = df.apply(lambda r: zone_15x4(r['X (mm)'], r['Z (mm)'], x_edges, z_edges), axis=1)
 stats_15x4_all = df.groupby('Zone_15x4_ALL')['Value (Celsius)'].agg(['min', 'max', 'mean']).reset_index()
 stats_15x4_all['Delta (max - min)'] = stats_15x4_all['max'] - stats_15x4_all['min']
 stats_map_all = stats_15x4_all.set_index('Zone_15x4_ALL').to_dict(orient='index')
 
-# Gráfico 15×4 com valores em todo o molde; área útil apenas desenhada a tracejado
+# Graphic 15×4 with values for entire mould; usefull area is drawn in dashes
 fig, ax = plt.subplots(figsize=(16, 9))
 vmin2 = stats_15x4_all['mean'].min()
 vmax2 = stats_15x4_all['mean'].max()
@@ -245,7 +245,7 @@ for i in range(ncols):
                     color='white', ha='center', va='center', fontsize=6.2, weight='bold',
                     bbox=dict(boxstyle='round,pad=0.28', facecolor='black', edgecolor='white', linewidth=0.8, alpha=0.6))
         else:
-            # Se realmente não houver dados numa subzona, mostra cinzento sem label
+            # In case a subzone does not exist, Show grey with no label
             ax.add_patch(patches.Rectangle((xa, za), w, h, facecolor='0.7', edgecolor='black', linewidth=0.5))
 
 ax.set_xlim(0.0, MOLD_X); ax.set_ylim(0.0, MOLD_Z)
@@ -255,7 +255,7 @@ ax.set_title('Subdivision 15×4: Mean Temperature and ΔT per Subzone (Full Map)
 sm = plt.cm.ScalarMappable(cmap='plasma', norm=plt.Normalize(vmin=vmin2, vmax=vmax2))
 cb = plt.colorbar(sm, ax=ax); cb.set_label('Mean Temperature (°C)')
 
-# Overlay da área útil (bordo aplicado) — apenas para referência visual
+# Overlay of usefull area (pallied boundary) — only for visual reference
 draw_useful_area(ax)
 
 plt.legend(loc='lower right', frameon=False)
@@ -275,7 +275,7 @@ def zone_15_by_x(xp, edges):
 
 df_useful['Zone_15'] = df_useful['X (mm)'].apply(lambda v: zone_15_by_x(v, x_edges))
 
-# Mean temperature per heater (useful area). Fill any missing with overall mean as a fallback.
+# Average temperature per heater (useful area). Fill any missing with overall mean as a fallback.
 T_mean_by_heater = df_useful.groupby('Zone_15')['Value (Celsius)'].mean().reindex(range(1, 16))
 if T_mean_by_heater.isna().any():
     T_mean_by_heater = T_mean_by_heater.fillna(df_useful['Value (Celsius)'].mean())
