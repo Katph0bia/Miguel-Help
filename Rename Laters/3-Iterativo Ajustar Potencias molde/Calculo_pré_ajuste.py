@@ -14,15 +14,15 @@ from scipy.interpolate import griddata
 import matplotlib.patches as patches
 
 # ==========================
-# CONFIGURAÇÃO E LEITURA
+# CONFIGURATION AND READING 
 # ==========================
 file_path = r"C:/Users/ugims/inegi.up.pt/Teses & Estágios - Teses_Estágios - Miguel António Costa - Teses_Estágios - Miguel António Costa/3. Repositório do Miguel/Matriz seleção/prot2_uniforme.csv"
 
-# Dimensões do molde (### ALTERADO)
+# Mould's dimentions (### ALTARED)
 MOLD_X = 900.0  # mm
 MOLD_Z = 420.0  # mm
 
-# Lê o ficheiro, ignorando as primeiras 8 linhas e forçando separador vírgula
+# Read file, ignore first 8 lines and for a ","
 df = pd.read_csv(
     file_path,
     skiprows=8,
@@ -32,51 +32,51 @@ df = pd.read_csv(
     encoding='windows-1252'
 )
 
-# Limpar nomes das colunas e espaços à volta dos dados
+# Clean names of all columns and spaces around data
 df.columns = [col.strip() for col in df.columns]
 df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 
-# Converter colunas para tipo numérico
+# Convert columns into a numerical type
 for col in df.columns:
     df[col] = pd.to_numeric(df[col], errors='coerce')
 
-# Remover linhas inválidas
+# Remove invalid lines
 df.dropna(inplace=True)
 
 # ==========================
-# REESCALA PARA 900 x 420 mm (### ALTERADO)
+# RESCALE TO 900 x 420 mm (### ALTARED)
 # ==========================
-# Considera as colunas originais 'X (mm)' e 'Z (mm)' como coordenadas medidas e
-# reescala linearmente para caber exatamente em [0, MOLD_X] e [0, MOLD_Z]
+# Consider original columns 'X (mm)' and 'Z (mm)' as coordenated data and
+# rescale linearly to fit exactly withing [0, MOLD_X] and [0, MOLD_Z]
 x_raw = df['X (mm)']
 z_raw = df['Z (mm)']
 
 x_min_raw, x_max_raw = x_raw.min(), x_raw.max()
 z_min_raw, z_max_raw = z_raw.min(), z_raw.max()
 
-# Evitar divisão por zero
+# Avoid dividing by 0
 if x_max_raw == x_min_raw:
-    raise ValueError("Intervalo de X no ficheiro é nulo; não é possível reescalar.")
+    raise ValueError("X interval in file is Null; Rescaling impossible.")
 if z_max_raw == z_min_raw:
-    raise ValueError("Intervalo de Z no ficheiro é nulo; não é possível reescalar.")
+    raise ValueError("Z interval is file is Null; Rescaling impossible.")
 
-# Reescala linear
+# Rescaling linear
 df['X (mm)'] = (x_raw - x_min_raw) / (x_max_raw - x_min_raw) * MOLD_X
 df['Z (mm)'] = (z_raw - z_min_raw) / (z_max_raw - z_min_raw) * MOLD_Z
 
-# Atalhos
+# Shortcuts
 x = df['X (mm)']
-y = df['Z (mm)']  # Largura (eixo Z do molde)
+y = df['Z (mm)']  # Width (Mould's Z axis)
 temperatura = df['Value (Celsius)']
 
-# Mostrar amostra
+# Show sample
 print(df.head())
 
-# (Opcional) Guardar ficheiro limpo
+# (Opcional) Save clean file
 df.to_csv("dados_superficie_organizados.csv", sep=';', index=False)
 
 # ==========================
-# GRÁFICO 3D DE DISPERSÃO
+# 3D DISPERSION GRAPHIC
 # ==========================
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111, projection='3d')
@@ -94,7 +94,7 @@ plt.tight_layout()
 plt.show()
 
 # ==========================
-# MAPA 2D INTERPOLADO
+# 2D INTERPOLATED MAPS
 # ==========================
 xi = np.linspace(x.min(), x.max(), 200)
 yi = np.linspace(y.min(), y.max(), 200)
@@ -112,20 +112,20 @@ plt.tight_layout()
 plt.show()
 
 # ==========================
-# DIVISÃO EM ZONAS 3 × 2 (média por zona) — Mantido (opera na escala 900 × 420)
+# ZONE DIVISION 3 × 2 (average per zone) — Kept (operate at scale 900 × 420)
 # ==========================
 x_min, x_max = 0.0, MOLD_X
 z_min, z_max = 0.0, MOLD_Z
 
-x_div = np.linspace(x_min, x_max, 4)  # 3 zonas em X → 4 limites
-z_div = np.linspace(z_min, z_max, 3)  # 2 zonas em Z → 3 limites
+x_div = np.linspace(x_min, x_max, 4)  # 3 zones in X → 4 limits
+z_div = np.linspace(z_min, z_max, 3)  # 2 zones in Z → 3 limits
 
 def identificar_zona(xp, zp):
     for i in range(3):  # X
         for j in range(2):  # Z
             if x_div[i] <= xp < x_div[i+1] and z_div[j] <= zp < z_div[j+1]:
                 return j * 3 + i + 1
-    # incluir ponto no limite superior extremo
+    # include limit dots for maximun superior limit
     if np.isclose(xp, x_max) and np.isclose(zp, z_max):
         return 6
     return np.nan
@@ -139,7 +139,7 @@ for _, row in medias_por_zona.iterrows():
 
 zona_temp_dict = dict(zip(medias_por_zona['Zona'], medias_por_zona['Value (Celsius)']))
 
-# Mapa 3×2 pintado por médias
+# Map 3×2 drawn by averages
 fig, ax = plt.subplots(figsize=(10, 8))
 for i in range(3):  # X
     for j in range(2):  # Z
@@ -181,11 +181,11 @@ plt.tight_layout()
 plt.show()
 
 # ==========================
-# SUBDIVISÃO 15 × 4 (60 subzonas) — alinhada às 15 zonas longitudinais reais
+# SUBDIVISION 15 × 4 (60 subzonas) — aligned to 15 longitudinal real zones
 # ==========================
 import matplotlib.patches as patches
 
-# Centros reais (mm) das 15 resistências (do teu desenho)
+# Real controls (mm) of 15 resistences (of drawing)
 centros = [
     29.60, 88.80, 148.00, 207.20, 266.40,
     331.60, 390.80, 450.00, 509.20, 568.40,
@@ -193,13 +193,13 @@ centros = [
 ]
 centros = sorted(centros)
 
-# Limites irregulares das 15 zonas por pontos médios entre centros
+# Irregular limits of 15 zones per average dot between centers
 limites = [0.0]
 for i in range(1, len(centros)):
     limites.append(0.5 * (centros[i-1] + centros[i]))
 limites.append(900.0)
-x_edges = np.array(limites, dtype=float)   # 16 bordas → 15 colunas
-z_edges = np.linspace(z_min, z_max, 5)     # 5 bordas → 4 linhas
+x_edges = np.array(limites, dtype=float)   # 16 borders → 15 columns
+z_edges = np.linspace(z_min, z_max, 5)     # 5 borders → 4 lines
 
 ncols = len(x_edges) - 1  # 15
 nrows = len(z_edges) - 1  # 4
@@ -212,34 +212,34 @@ def identificar_zona_15x4(xp, zp, xed, zed):
             i = ii
             break
     if i is None and np.isclose(xp, xed[-1]):
-        i = len(xed) - 2  # incluir extremo
+        i = len(xed) - 2  # include maximun
 
-    # linha (Z)
+    # line (Z)
     j = None
     for jj in range(len(zed) - 1):
         if zed[jj] <= zp < zed[jj + 1]:
             j = jj
             break
     if j is None and np.isclose(zp, zed[-1]):
-        j = len(zed) - 2  # incluir extremo
+        j = len(zed) - 2  # include maximun
 
     if i is None or j is None:
         return np.nan
-    return j * (len(xed) - 1) + i + 1  # numeração linha a linha
+    return j * (len(xed) - 1) + i + 1  # line by line numeration
 
-# Atribuir subzona 15×4 a cada ponto
+# Atribute subzone 15×4 to each dot
 df['Zona_15x4'] = df.apply(lambda r: identificar_zona_15x4(r['X (mm)'], r['Z (mm)'], x_edges, z_edges), axis=1)
 
-# Estatísticas por subzona
+# Statistic per sobzone
 estat_15x4 = df.groupby('Zona_15x4')['Value (Celsius)'].agg(['min', 'max', 'mean']).reset_index()
 estat_15x4['Delta (max - min)'] = estat_15x4['max'] - estat_15x4['min']
 estat_dict_15x4 = estat_15x4.set_index('Zona_15x4').to_dict(orient='index')
 
-# GRÁFICO das 60 subzonas
+# GRAPHIC of 60 subzones
 fig, ax = plt.subplots(figsize=(16, 9))
 
-for i in range(ncols):         # 15 colunas
-    for j in range(nrows):     # 4 linhas
+for i in range(ncols):         # 15 colunms
+    for j in range(nrows):     # 4 lines
         zona_id = j * ncols + i + 1
         x_start = x_edges[i]
         z_start = z_edges[j]
@@ -270,7 +270,7 @@ for i in range(ncols):         # 15 colunas
             bbox=dict(boxstyle='round,pad=0.28', facecolor='black', edgecolor='white', linewidth=0.8, alpha=0.6)
         )
 
-# Configuração final
+# final configuration
 ax.set_xlim(x_min, x_max)
 ax.set_ylim(z_min, z_max)
 ax.set_xlabel('X (mm) - Comprimento (0–900)')
@@ -287,7 +287,7 @@ cbar.set_label('Temperatura Média (°C)')
 plt.grid(False)
 plt.tight_layout()
 
-# (Opcional) retângulo de contorno entre duas zonas (exemplo)
+# (Opcional) rectangle outline between two zones (exemple)
 zona_inf_esq = 12
 zona_sup_dir = 25
 
@@ -315,13 +315,13 @@ plt.tight_layout()
 plt.show()
 
 # ==========================
-# AJUSTE DE POTÊNCIA — 15 ZONAS PARA A TEMPERATURA ALVO
+# ADJUST POTENCY — 15 ZONES FOR TARGET TEMPERATURE
 # ==========================
-K = 1.5         # Ganho de correção térmica (ajusta a agressividade do ajuste)
-P_MIN = 10      # Potência mínima permitida (W)
-P_MAX = 150     # Potência máxima permitida (W)
+K = 1.5         # Thermic correction gain (adjust how aggressive it is)
+P_MIN = 10      # Minimin allowed potency (W)
+P_MAX = 150     # Maximun allowed potency (W)
 
-# --- Centros das resistências em mm (do desenho) ---
+# --- Resistences centers in mm (of drawing) ---
 centros = [
     29.60, 88.80, 148.00, 207.20, 266.40,
     331.60, 390.80, 450.00, 509.20, 568.40,
@@ -329,14 +329,14 @@ centros = [
 ]
 centros = sorted(centros)
 
-# --- Limites irregulares das 15 zonas por pontos médios entre centros ---
+# --- Irregular limits of 15 zones per average dot between centers ---
 limites = [0.0]
 for i in range(1, len(centros)):
     limites.append(0.5 * (centros[i-1] + centros[i]))
 limites.append(900.0)
-limites = np.array(limites)  # 16 bordas → 15 zonas
+limites = np.array(limites)  # 16 borders → 15 zones
 
-# Função para mapear X -> zona [1..15] usando limites irregulares
+# Function to map X -> zone [1..15] using irregular limits
 def identificar_zona_x_custom(xp, edges):
     for i in range(len(edges) - 1):
         if edges[i] <= xp < edges[i + 1]:
@@ -345,22 +345,22 @@ def identificar_zona_x_custom(xp, edges):
         return len(edges) - 1
     return np.nan
 
-# Atribuir zona a cada ponto e calcular T_média por zona
+# Atribute zone to each dot and calculate T_média per zone
 df['Zona_X'] = df['X (mm)'].apply(lambda v: identificar_zona_x_custom(v, limites))
 medias_por_zona_x = df.groupby('Zona_X')['Value (Celsius)'].mean().reset_index()
 zona_temp = medias_por_zona_x.copy().rename(columns={'Value (Celsius)': 'T_média'})
 zona_temp = zona_temp.sort_values('Zona_X').reset_index(drop=True)
 
-# --- INPUT: Temperatura alvo ---
+# --- INPUT: Target  Temperature ---
 while True:
     try:
-        T_SET = float(input("\nInsere a TEMPERATURA DE SUPERFÍCIE ALVO (°C): "))
+        T_SET = float(input("\nInsert TARGET for SURFACE TEMPERATURE (°C): "))
         break
     except ValueError:
-        print("Valor inválido. Insere um número (°C).")
+        print("Invalid Value. Insert a number (°C).")
 
-# --- INPUT: Potências apenas das zonas 1..8 (o resto é simétrico) ---
-print("\nInsere a potência aplicada em cada zona (1 a 8) — o outro lado é simétrico em torno da zona 8:")
+# --- INPUT: Only potency of zones 1..8 (everything else is simetrical) ---
+print("\nInsert applicable potency for each zone (1 a 8) — side around zona 8 is simetrical:")
 potencias_parciais = {}
 for i in range(1, 9):  # 1..8
     while True:
@@ -369,9 +369,9 @@ for i in range(1, 9):  # 1..8
             potencias_parciais[i] = p
             break
         except ValueError:
-            print("Valor inválido. Insere um número válido.")
+            print("Invalid Value. Insert a valid number.")
 
-# Reconstruir vetor completo 1..15 (centro = zona 8)
+# Vector reconstruction complete 1..15 (center = zone 8)
 potencias_aplicadas = [
     potencias_parciais[1],  # 1
     potencias_parciais[2],  # 2
@@ -380,7 +380,7 @@ potencias_aplicadas = [
     potencias_parciais[5],  # 5
     potencias_parciais[6],  # 6
     potencias_parciais[7],  # 7
-    potencias_parciais[8],  # 8 (centro)
+    potencias_parciais[8],  # 8 (center)
     potencias_parciais[7],  # 9
     potencias_parciais[6],  # 10
     potencias_parciais[5],  # 11
@@ -391,18 +391,18 @@ potencias_aplicadas = [
 ]
 zona_temp['Potência Aplicada (W)'] = potencias_aplicadas
 
-# --- AJUSTE PARA O ALVO ---
-# Erro por zona versus alvo (positivo = está acima do alvo)
+# --- TARGET ADJUSTMENT ---
+# Error per zone VS. target (positive = It is above target)
 denom = max(T_SET, 1e-6)  # evitar divisão por zero
 zona_temp['Erro vs alvo (°C)'] = zona_temp['T_média'] - T_SET
 
-# Fator de ajuste proporcional (se T_média > alvo → reduz potência; se < alvo → aumenta)
+# Adjusting proporcional facter (if T_média > target → reduce potency; if T_média < target → increase potency)
 zona_temp['Fator ajuste'] = 1 - K * (zona_temp['Erro vs alvo (°C)'] / denom)
 
-# Nova potência (com limites)
+# New potency (with limits)
 zona_temp['Nova Potência (W)'] = (zona_temp['Potência Aplicada (W)'] * zona_temp['Fator ajuste']).clip(P_MIN, P_MAX)
 
-# --- RESULTADOS ---
+# --- RESULTS ---
 print("\n=== Ajuste por Zona para Alvo = {:.2f} °C ===".format(T_SET))
 for _, row in zona_temp.iterrows():
     print(f"Zona {int(row['Zona_X']):2d}: Tmédia = {row['T_média']:.2f} °C | "
@@ -410,7 +410,7 @@ for _, row in zona_temp.iterrows():
           f"Fator = {row['Fator ajuste']:.3f} | "
           f"P_old = {row['Potência Aplicada (W)']:.1f} W → P_new = {row['Nova Potência (W)']:.1f} W")
 
-# --- GRÁFICO: comparação Potência Aplicada vs Nova Potência + Erro vs Alvo ---
+# --- GRAPHICS: Conmparison of Applied potency vs New potency + Error vs Target ---
 fig, ax1 = plt.subplots(figsize=(12, 5.8))
 ax1.bar(zona_temp['Zona_X'], zona_temp['Nova Potência (W)'], label='Nova Potência', alpha=0.85)
 ax1.plot(zona_temp['Zona_X'], zona_temp['Potência Aplicada (W)'],
@@ -423,7 +423,7 @@ ax1.legend()
 ax1.grid(True, axis='y', linestyle='--', alpha=0.5)
 ax1.set_xticks(range(1, 16))
 
-# Eixo secundário: erro vs alvo
+# Secundary axis: error vs target
 ax2 = ax1.twinx()
 ax2.plot(zona_temp['Zona_X'], zona_temp['Erro vs alvo (°C)'],
          marker='s', linestyle='-', label='Erro vs alvo (°C)')
@@ -433,12 +433,12 @@ ax2.tick_params(axis='y')
 plt.tight_layout()
 plt.show()
 
-# --- OVERLAY: desenhar os 15 limites no mapa 2D (para conferência visual) ---
+# --- OVERLAY: draw 15 limits on 2D map (for visual conference) ---
 fig = plt.figure(figsize=(10, 8))
 contour = plt.contourf(xi, yi, zi, levels=100, cmap='plasma')
 for e in limites:
     plt.axvline(e, linewidth=0.9, alpha=0.75)  # linhas dos limites de zona
-# opcional: marcar os centros
+# opcional: center markings
 for c in centros:
     plt.axvline(c, linewidth=0.8, linestyle=':', alpha=0.6)
 plt.xlabel('X (mm) - Comprimento (0–900)')
